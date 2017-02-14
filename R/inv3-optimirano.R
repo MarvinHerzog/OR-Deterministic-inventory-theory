@@ -23,6 +23,7 @@ D=1000      # Pricakovana vrednost in std. odklon povpraševanja na enoto èasa
 sd1=10  #
 p=0.01
 
+
 n = 80 #st obdobij
 
 K = 300  #setup cost (per order)
