@@ -13,7 +13,7 @@
 #TODO: posplositev povprasevanja, ne samo en dan.. npr. sprememba vsaka 2 dni
 
 
-require(truncnorm) #
+require(truncnorm) ##
 n = 40 #stobdobij
 
 K = 100  #setup cost (per order)
