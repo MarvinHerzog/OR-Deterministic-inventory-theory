@@ -10,31 +10,40 @@
 #library(profvis)
 #profvis({
 
-#TODO: posplositev povprasevanja, ne samo en dan.. npr. sprememba vsaka 2 dni
+####TODO:
+#posplositev povprasevanja, ne samo en dan.. npr. sprememba vsaka 2 dni
+
+# boljsi prepreci propad: ce nad RP in skok preden preckamo RP: ekstrapoliraj pricakovan cas preckanja ce skoka ne bi bilo, naroci takrat
+# ce po skoku ostanemo pod RP: do ??
+
+# opcija brez backlogginga: skok vedno skoci do S, saj se povprasevanje ne prenese, stroske pomanjkanja pa vendarle upostevamo.
+
+# ob danih parametrih zmoti RP, yopt... kako se spremeni percycle/TC ob istem semenu?
+###
+
+#require(truncnorm) ##
+n = 20 #stobdobij
+
+# K = 100  #setup cost (per order)
+# h = 0.02 #holding cost (per inventory-unit per unit-time)
+# L = 0   #lead time (in unit-time)
+# D=1000      # Pricakovana vrednost in std. odklon povpraševanja na enoto èasa
+# sd1=10  #
+# p=0.01
 
 
-require(truncnorm) ##
-n = 40 #stobdobij
+n = 30 #st obdobij
 
-K = 100  #setup cost (per order)
-h = 0.02 #holding cost (per inventory-unit per unit-time)
-L = 0   #lead time (in unit-time)
-D=1000      # Pricakovana vrednost in std. odklon povpraševanja na enoto èasa
-sd1=10  #
-p=0.01
-
-
-n = 80 #st obdobij
-
-K = 300  #setup cost (per order)
+K = 30  #setup cost (per order)
 h = 0.05 #holding cost (per inventory-unit per unit-time)
-L = 3   #lead time (in unit-time)
+L = 2   #lead time (in unit-time)
 D=120     # Pricakovana vrednost in std. odklon povpraševanja na enoto èasa
-sd1=150  #
+sd1=0  #
 p=0.10 #shortage cost
 B = 0 #buffer
 
-seme = runif(1,0,1000)
+#seme = runif(1,0,1000)
+seme = 125
 
 allowshort = F  #dopuscamo nacrtovano pomanjkanje dobrin
 prepreci.propad = F #ce mine ves cikel, brez da preckamo RP, naroci na koncu cikla
@@ -60,9 +69,14 @@ SD = sqrt(sd1^2*Le) #
 
 RP = Le*D-short +B#reorder point
 
+##
+ RP = RP*1
+ yopt = yopt*1
+ 
+ S=RP-Le*D+yopt
+ short = yopt-S
 
-
-
+##
 
 set.seed(seme)
 
@@ -259,7 +273,7 @@ while(I[ci,1]<=n){
   
   
   
-  B=proc.time()-par  
+  B1=proc.time()-par  
   
   
   I[ci+1,2] = yLOW+yopt #y koordinata zgornjega dela skoka
@@ -363,3 +377,4 @@ points(x=propadi,y = rep(RP,length(propadi)),col="red",pch="x") #krizna narocila
 #}
 #plot(x=G,y=V)
 ##
+percycle[1:j-1]
