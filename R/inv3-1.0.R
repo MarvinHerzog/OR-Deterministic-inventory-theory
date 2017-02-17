@@ -1,16 +1,22 @@
-##
-#G = c(10,20,30,40,50,60,70,80,90,100,150,200,250,
-#      300,350,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2500,3000)
-#V=c()
-#for(i in G){ #test skalabilnosti kode, zgleda da raste linearno z n
-##
 
 #####inv3
+
+skal = 0
+
+###
+# G = c(10,20,30,40,50,60,70,80,90,100,150,200,250,
+#      300,350,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2500,3000,3500,4000,4500,5000)
+# V=c()
+# for(skal in G){ 
+## #test skalabilnosti kode, zgleda da raste linearno z n
+
 
 #library(profvis)
 #profvis({
 
 ####TODO:
+#loci prepreci.propad metodi  
+  
 #posplositev povprasevanja, ne samo en dan.. npr. sprememba vsaka 2 dni
 
 # boljsi prepreci propad: ce nad RP in skok preden preckamo RP: ekstrapoliraj pricakovan cas preckanja ce skoka ne bi bilo, naroci takrat
@@ -32,33 +38,35 @@ n = 40 #stobdobij
 # p=0.01
 
 
-n = 50 #st obdobij
+n = 60 #st obdobij
 
-K = 30  #setup cost (per order)
+K = 20  #setup cost (per order)
 h = 0.05 #holding cost (per inventory-unit per unit-time)
 L = 2   #lead time (in unit-time)
-D = 120     # Pricakovana vrednost in std. odklon povpraševanja na enoto èasa
-sd1 = 150 #
+D = 150     # Pricakovana vrednost in std. odklon povpraševanja na enoto èasa
+sd1 = 0 #
 p = 0.10 #shortage cost
 B = 0 #buffer
 
-#seme = runif(1,0,1000)
-seme = 18
+seme = runif(1,0,1000)
+#seme = 18
 
 allowshort = T  #dopuscamo nacrtovano pomanjkanje dobrin
 prepreci.propad = T #ce mine ves cikel, brez da preckamo RP, naroci na koncu cikla
 prepreci.propad2 = F #TODO: ce ne zadene RP, doloci kdaj bi jo, naroci vseeno
 prednarocila = T #ce L>Le, prvih nekaj obdobij naroci ob fiksnih cas. intervalih (kot da je Y deterministicen)
 LE.namesto.L = F #uporabi efektivni lead time - lepsi rezultati ob nestabilnih Y
-t0.namesto.RP = F
-TCtest = F
-
+t0.namesto.RP = F #naroci periodicno z t0 namesto po preckanju RP
+TCtest = F #total cost test
+ 
 
 if (allowshort == TRUE) {
   SHT = sqrt((p + h) / p) #faktor za shortage cost, ce ne dopuscamo, potem nastavi na 1
 } else{
   SHT = 1
 }
+
+if(skal !=0){n = skal}
 
 yopt = sqrt((2 * K * D) / h) * SHT #kolicina, ki jo narocimo
 S = yopt / SHT ^ 2 #pozitiven del naroèila
@@ -450,6 +458,17 @@ for (ind in 1:length(H[,1])) {
   doba.prezivetja = max(A[A[,3] > 0,1])
   TCv = append(TCv,TC)
 }
+
+#### konec zanke skalabilnosti
+# V=append(V,B3[3])
+# }
+# plot(x=G,y=V)
+# abline(lm(V ~ G))
+####
+
+
+
+
 summary(percycle)
 
 
@@ -479,11 +498,10 @@ if (TCtest) {
   points(x = ceiling(length(zaporedje) / 2))
 }
 
+
+
 #})
 
-##
-#V=append(V,B3[3])
-#}
-#plot(x=G,y=V)
-##
+
+
 #percycle[1:j-1]
