@@ -40,20 +40,20 @@ n = 40 #stobdobij
 
 n = 60 #st obdobij
 
-K = 20  #setup cost (per order)
+K = 50  #setup cost (per order)
 h = 0.05 #holding cost (per inventory-unit per unit-time)
 L = 2   #lead time (in unit-time)
 D = 150     # Pricakovana vrednost in std. odklon povpraševanja na enoto èasa
-sd1 = 0 #
+sd1 = 150 #
 p = 0.10 #shortage cost
 B = 0 #buffer
 
-seme = runif(1,0,1000)
+#seme = runif(1,0,1000)
 #seme = 18
 
 allowshort = T  #dopuscamo nacrtovano pomanjkanje dobrin
-prepreci.propad = T #ce mine ves cikel, brez da preckamo RP, naroci na koncu cikla
-prepreci.propad2 = F #TODO: ce ne zadene RP, doloci kdaj bi jo, naroci vseeno
+prepreci.propad1 = F #ce mine ves cikel, brez da preckamo RP, naroci na koncu cikla
+prepreci.propad2 = T #ce smo po skoku se vedno pod RP, naroci taksno narocilo, da bo ob upostevanju vseh prihodnih skokov vrednost zalog na S
 prednarocila = T #ce L>Le, prvih nekaj obdobij naroci ob fiksnih cas. intervalih (kot da je Y deterministicen)
 LE.namesto.L = F #uporabi efektivni lead time - lepsi rezultati ob nestabilnih Y
 t0.namesto.RP = F #naroci periodicno z t0 namesto po preckanju RP
@@ -141,10 +141,11 @@ for (ind in 1:length(H[,1])) {
   #ce lead time predolg... prednarocila za prvih # obdobij z pricakovano vrednostjo?
   
   
-  if (prepreci.propad) {
-    ##ce smo v ciklu prejeli novo posiljko PREDEN smo uspeli preckati RP, na silo postavimo narocilo da preprecimo spiralo
-    force.order = FALSE
-  }
+#   if (prepreci.propad) {
+#     ##ce smo v ciklu prejeli novo posiljko PREDEN smo uspeli preckati RP, na silo postavimo narocilo da preprecimo spiralo
+#     force.order = FALSE
+#   }
+#   
   
   if (LE.namesto.L) {
     L = Le
@@ -212,16 +213,17 @@ for (ind in 1:length(H[,1])) {
   
   rezerva = 2 #koeficient rezerve: za koliko vecji bo vektor I kot pricakovano
   leng = ceiling(n * D * rezerva / yopt) + st.obdobij #dolzina I (I je vektor zaenkrat neznane dolzine, kjer bodo shranjeni skoki)
-  I = data.frame(rep(n + 1,leng),rep(0,leng)) #naredimo prealociran vektor dolzine > n, hitrejsa koda
-  I[1,] = c(0,S) #
-  if (t0.namesto.RP)
+  I = data.frame(rep(n + 1,leng),rep(0,leng)) #naredimo prealociran vektor dolzine > n, hitrejsa koda kot ce ga sproti povecujemo
+  I[1,] = c(0,S) #zacetno narocilo
+  
+  if (t0.namesto.RP) #ce narocujemo periodicno z t0 namesto ob preckanju RP
   {
     RP = n * RP
     I[2:leng,1] = t0 * 1:(leng - 1)
   }
   
-  if (prednarocila & st.obdobij > 0) {
-    #vstavimo prednarocila
+  if (prednarocila & st.obdobij > 0) { #vstavimo prednarocila (narocila postavljena v negativnih casih)
+    
     
     for (i in 1:st.obdobij) {
       I[i + 1,1] = t0 * i
@@ -244,18 +246,17 @@ for (ind in 1:length(H[,1])) {
   S2 = 0
   S3 = 0
   x1 = -1
-  ci = 1
   zereseno = F
   cassupernarocilo = n + 3
   indeksi.supernarocil =c()
   narocila =c()
   
+  ci = 1
   while (I[ci,1] <= n) {
     if (I[ci,2] > RP) {
       #### dolocimo "would be" presecisce z RP ce na poti ne bi bilo skokov
       a = floor(I[ci,1]) + 1 #indeks zadnje spremembe povprasevanja pred trenutnim skokom
       #b = floor(I[ci+1,1]) +1 #indeks zadnje spremembe povprasevanja pred naslednjim skokom
-      #if a=b?
       A[a + 1,3] = I[ci,2] - A[a,2] * (a - I[ci,1]) #kolicina dobrine v casu t = a
       if (I[ci,2] >= RP &
           A[a + 1,3] <= RP) {
@@ -346,10 +347,10 @@ for (ind in 1:length(H[,1])) {
     } else {
       I[ci + 1,2] = yLOW + yopt #y koordinata zgornjega dela skoka
     }
-    if (prepreci.propad & !is.na(I[ci + 1,2])) {
+    if ((prepreci.propad1|prepreci.propad2) & !is.na(I[ci + 1,2])) {
       #Ce pr.prop=T in med zadnjima skokoma ni bilo presecisca RP (x1) ALI:
       j = 1
-      if (x1 < I[ci,1]) {
+      if (prepreci.propad1 & x1 < I[ci,1]) {
         while (I[ci + j,1] <= n) {
           #vsilimo narocilo
           j = j + 1 #cez koliko skokov pride na vrsto ta skok?
@@ -359,7 +360,7 @@ for (ind in 1:length(H[,1])) {
         I[ci + j,1] = t
       }
       j1 = 1
-      if (I[ci + 1,2] < RP &
+      if (prepreci.propad2 & I[ci + 1,2] < RP &
           zereseno == F) {
         #ce smo po skoku se vedno pod RP
         while (I[ci + j1,1] <= n) {
