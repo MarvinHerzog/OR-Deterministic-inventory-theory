@@ -1,11 +1,11 @@
 #definiramo funkcijo, ki vrne tocke za optimalno strategijo:
 dynamic <- function(n,K,h,r){
-#matrika C bo predstavljala matriko stroskov po obdobjih 
-#glede na to kdaj in koliko narocimo v prihodnjih obdobjih
+  #matrika C bo predstavljala matriko stroskov po obdobjih 
+  #glede na to kdaj in koliko narocimo v prihodnjih obdobjih
   C = matrix(Inf, nrow=n, ncol=n) 
   c.min = rep(0,n+1) #vektor minimumov po obdobjih
   
-#definiramo pomozno funkcijo, ki jo bomo uporabili v formuli za racunanje stroskov: 
+  #definiramo pomozno funkcijo, ki jo bomo uporabili v formuli za racunanje stroskov: 
   vsota <- function(i,j){ 
     if (i==j){
       S = 0
@@ -19,32 +19,32 @@ dynamic <- function(n,K,h,r){
     S
   }
   
-# stolpci v matriki C predstavljajo obdobja,
-# vrstice v matriki C pa izbire kdaj bomo izvedli naslednje narocilo 
+  # stolpci v matriki C predstavljajo obdobja,
+  # vrstice v matriki C pa izbire kdaj bomo izvedli naslednje narocilo 
   for (i in n:1){
     for (j in i:n){
-# po rekurzivni zvezi racunamo stroske za vsako obdobje in vsako strategijo
+      # po rekurzivni zvezi racunamo stroske za vsako obdobje in vsako strategijo
       C[j,i] = c.min[j+1] + K + h*vsota(i,j) 
     }
     c.min[i] = min(C[,i])
   }
-
-#strategija, ki ima minimalne stroske:
+  
+  #strategija, ki ima minimalne stroske:
   opt.stroski = c.min[1] 
-
-#zanima na, kje so mi:
+  
+  #zanima nas, kje so minimumi:
   c.opt = rep(F, n)
   c.opt[1] = T
   i = 1
-
+  
   while (i < n){
-#iscemo indeks vrstice, kjer se nahaja minimum v stolpcu:
-    i = which.min(C[,i])  
+  #iscemo indeks vrstice, kjer se nahaja minimum v stolpcu:
+    i = which.min(C[,i]) + 1  
     c.opt[i] = T
   }
-
-#vektor koordinat optimalne poti
-#(zacnemo na koncu poti)
+  c.opt
+  #vektor koordinat optimalne poti
+  #(zacnemo na koncu poti)
   P = c(n,0)
   
   for (i in n:1){
@@ -52,7 +52,7 @@ dynamic <- function(n,K,h,r){
       r.i = r[i]
     }
     else{
-      for (j in (i+1):n) {
+      for (j in (i+1):(n+1)) {
         if (c.opt[j] == T) {
           break
         } 
@@ -77,7 +77,7 @@ dynamic <- function(n,K,h,r){
       y = append(y, c(P[i]))
     }
   }
-
+  
   p = data.frame(x,y)
 }
 
@@ -104,14 +104,14 @@ N = seq(10, 100, 10)
 for (i in 1:length(N)) {
   n = N[i]
   print(n)
-  
   cas.zacetek = proc.time()
   r = rnorm(n, mean = D, sd = sd)
-  dynamic(n,K,h,r)
+  tocke = dynamic(n,K,h,r)
   cas.konec = proc.time() - cas.zacetek
   #3. element vektorja proc.time je skupni čas izvajanja:
   cas.konec = cas.konec[3] 
   casi = append(casi, cas.konec)
+#  plot(tocke, type="l")
 }  
 
 plot( x = N, y = casi, xlab = "število obdobij", ylab = "sekunde",
