@@ -78,7 +78,18 @@ dynamic <- function(n,K,h,r){
     }
   }
   
+  
   p = data.frame(x,y)
+  ## pomozen del za simulacijo
+  d = c(F)
+  for(i in 2:length(p[,1])){ 
+    if(p[i,1]-p[i-1,1]==0){
+      d[i] = T
+    } else {d[i] = F}
+  }
+  ##
+  
+  return(list(p,p[d,]))
 }
 
 #1.primer:
@@ -90,29 +101,29 @@ dynamic <- function(n,K,h,r){
 
 #2.primer:
 n = 10 
-K = 100  
+K = 5  
 h = 0.02 
 D = 100     
 sd = 10 
-r = rnorm(n, mean = D, sd = sd)
+r = runif(n,0,100)
 tocke = dynamic(n,K,h,r)
-plot(tocke, type="l", xlab = "obdobja", ylab ="inventar",
+plot(tocke[[1]], type="l", xlab = "obdobja", ylab ="inventar",
      main = "Optimalna strategija")
 
 casi = c()
 N = seq(10, 100, 10)
-for (i in 1:length(N)) {
-  n = N[i]
-  print(n)
-  cas.zacetek = proc.time()
-  r = rnorm(n, mean = D, sd = sd)
-  tocke = dynamic(n,K,h,r)
-  cas.konec = proc.time() - cas.zacetek
-  #3. element vektorja proc.time je skupni čas izvajanja:
-  cas.konec = cas.konec[3] 
-  casi = append(casi, cas.konec)
+# for (i in 1:length(N)) {
+#   n = N[i]
+#   print(n)
+#   cas.zacetek = proc.time()
+#   r = rnorm(n, mean = D, sd = sd)
+#   tocke = dynamic(n,K,h,r)
+#   cas.konec = proc.time() - cas.zacetek
+#   #3. element vektorja proc.time je skupni čas izvajanja:
+#   cas.konec = cas.konec[3] 
+#   casi = append(casi, cas.konec)
 #  plot(tocke, type="l")
-}  
+#}  
 
-plot( x = N, y = casi, xlab = "število obdobij", ylab = "sekunde",
-      main = "Čas izvajanja glede na število obdobij")
+#plot( x = N, y = casi, xlab = "število obdobij", ylab = "sekunde",
+#      main = "Čas izvajanja glede na število obdobij")
