@@ -1,4 +1,5 @@
 
+
 #####inv3
 
 skal = 0
@@ -7,7 +8,7 @@ skal = 0
 # G = c(10,20,30,40,50,60,70,80,90,100,150,200,250,
 #      300,350,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2500,3000,3500,4000,4500,5000)
 # V=c()
-# for(skal in G){ 
+# for(skal in G){
 ## #test skalabilnosti kode, zgleda da raste linearno z n
 
 
@@ -16,7 +17,7 @@ skal = 0
 
 ####TODO:
 #loci prepreci.propad metodi  - KONEC
-  
+
 #posplositev povprasevanja, ne samo en dan.. npr. sprememba vsaka 2 dni
 
 # boljsi prepreci propad: ce nad RP in skok preden preckamo RP: ekstrapoliraj pricakovan cas preckanja ce skoka ne bi bilo, naroci takrat - NE DELA DOBRO
@@ -24,11 +25,14 @@ skal = 0
 
 # opcija brez backlogginga: skok vedno skoci do S, saj se povprasevanje ne prenese, stroske pomanjkanja pa vendarle upostevamo.
 
-# ob danih parametrih zmoti RP, yopt... kako se spremeni percycle/TC ob istem semenu?
+# ob danih parametrih zmoti RP, yopt... kako se spremeni percycle/TC ob istem semenu? KONEC
+
+#vkljuci celotni DP - KONEC
+#legende na grafih -KONEC SE MI ZDI
 ###
 
 #require(truncnorm) ##
-n = 40 #stobdobij
+#n = 40 #stobdobij
 
 # K = 100  #setup cost (per order)
 # h = 0.02 #holding cost (per inventory-unit per unit-time)
@@ -38,25 +42,27 @@ n = 40 #stobdobij
 # p=0.01
 
 
-n = 60 #st obdobij
+
+
+
+n = 50 #st obdobij
 
 K = 50  #setup cost (per order)
 h = 0.05 #holding cost (per inventory-unit per unit-time)
 L = 2   #lead time (in unit-time)
-D = 150     # Pricakovana vrednost in std. odklon povprasevanja na enoto casa
-sd1 = 150 #
-p = 0.10 #shortage cost
-B = 0 #buffer
+D = 150     # Pricakovana vrednost povprasevanja na enoto casa
+sd1 = 0 #Standardni odklon povprasevanja na enoto casa
+p = 0.10 #shortage cost (ce smo pod y=0)
+B = 0 #buffer, tj. varnostni dodatek k RP. Za zeljeno verjetnost, da pademo pod y=0, uporabi formulo B=VaR - Le *D (VaR value at risk za dano porazdelitev)
+RP.force = NA #sami izberemo reorder point (sicer nastavi na NA)
+yopt.force = NA #sami izberemo kolicino, ki jo narocimo (sicer nastavi na NA)
 
 
-# n = 10 
-# K = 5  
-# h = 0.02 
-# D = mean(r)     
-# sd = 10 
-
-
-
+# n = 10
+# K = 5
+# h = 0.02
+# D = mean(r)
+# sd = 10
 
 seme = runif(1,0,1000)
 #seme = 18
@@ -67,57 +73,183 @@ prepreci.propad2 = F #ce smo po skoku se vedno pod RP, naroci taksno narocilo, d
 prednarocila = T #ce L>Le, prvih nekaj obdobij naroci ob fiksnih cas. intervalih (kot da je Y deterministicen)
 LE.namesto.L = F #uporabi efektivni lead time - lepsi rezultati ob nestabilnih Y
 t0.namesto.RP = F #naroci periodicno z t0 namesto po preckanju RP
-TCtest = F #total cost test
-DP = F #Simulacija rezultata dobljenega z dinamicnim programiranjem, PAZI: izklopi propad2 ter allowshort! 
- 
-
-if (allowshort == TRUE) {
-  SHT = sqrt((p + h) / p) #faktor za shortage cost, ce ne dopuscamo, potem nastavi na 1
-} else{
-  SHT = 1
-}
-
-if(skal !=0){n = skal}
-
-yopt = sqrt((2 * K * D) / h) * SHT #kolicina, ki jo narocimo
-S = yopt / SHT ^ 2 #pozitiven del narocila
-short = yopt - S #shortage v enotah
-
-t0 = yopt / D            #dolzina cikla
-
-Le = L %% t0 #effective lead time
-EX = D * Le           # Upanje in std. odklon povprasevanja med Le
-SD = sqrt(sd1 ^ 2 * Le) #
-
-RP = Le * D - short + B#reorder point
+TCtest = F #total cost test, nastavi na F ce noces testirat, sicer izberi parameter ki ga hoces perturbirat. V if-u spodaj spremeni korak in st. korakov
+DP = T #Simulacija rezultata dobljenega z dinamicnim programiranjem, PAZI: izklopi propad2 ter allowshort!
+r = NA #ce zelis vstaviti svoj vektor povprasevanj, sicer pusti na NA (po default vzame rep(D,n) )
 
 
 
-##
-korak = 0.02
-zaporedje = 1
-
-if (TCtest) {
-  zaporedje = c(seq(0.8, 1 - korak, korak),seq(1,1.2,korak))
-}
-
-
-
-
-
-
-
-H = as.data.frame(RP * zaporedje)
-H[,2] <- yopt * zaporedje
 TCv = c()
-for (ind in 1:length(H[,1])) {
-  RP = H[ind,1]
-  yopt = H[ind,2]
+zaporedje = 1
+stskokov = c()
+if (TCtest != F) {
+  sprem = get(TCtest)
+  yopt = 1
+  RP = 1
+  korak = 0.005
+  stkor = 250
+  zaporedje = c(seq(1 - floor(stkor / 2) * korak, 1 - korak, korak),seq(1,1 +
+                                                                          (ceiling(stkor / 2) - 1) * korak,korak))
+  #zaporedje = seq(1,1+(ceiling(stkor/2)-1)*korak,korak)
+}
+
+
+for (ind in zaporedje) {
+  if (TCtest != F) {
+    assign(TCtest,sprem * ind)
+  }
   
-  S = RP - Le * D + yopt
-  short = yopt - S
   
-  ##
+  ##### Optimalna strategija, dobljena preko dinamicnega programiranja
+  #####
+  dynamic <- function(n,K,h,r) {
+    #matrika C bo predstavljala matriko stroskov po obdobjih
+    #glede na to kdaj in koliko narocimo v prihodnjih obdobjih
+    C = matrix(Inf, nrow = n, ncol = n)
+    c.min = rep(0,n + 1) #vektor minimumov po obdobjih
+    
+    #definiramo pomozno funkcijo, ki jo bomo uporabili v formuli za racunanje stroskov:
+    vsota <- function(i,j) {
+      if (i == j) {
+        S = 0
+      }
+      else{
+        S = 0
+        for (k in (i + 1):j) {
+          S = S + (k - i) * r[k]
+        }
+      }
+      S
+    }
+    
+    # stolpci v matriki C predstavljajo obdobja,
+    # vrstice v matriki C pa izbire kdaj bomo izvedli naslednje narocilo
+    for (i in n:1) {
+      for (j in i:n) {
+        # po rekurzivni zvezi racunamo stroske za vsako obdobje in vsako strategijo
+        C[j,i] = c.min[j + 1] + K + h * vsota(i,j)
+      }
+      c.min[i] = min(C[,i])
+    }
+    
+    #strategija, ki ima minimalne stroske:
+    opt.stroski = c.min[1]
+    
+    #zanima nas, kje so minimumi:
+    c.opt = rep(F, n)
+    c.opt[1] = T
+    i = 1
+    
+    while (i < n) {
+      #iscemo indeks vrstice, kjer se nahaja minimum v stolpcu:
+      i = which.min(C[,i]) + 1
+      c.opt[i] = T
+    }
+    c.opt
+    #vektor koordinat optimalne poti
+    #(zacnemo na koncu poti)
+    P = c(n,0)
+    
+    for (i in n:1) {
+      if (i == n) {
+        r.i = r[i]
+      }
+      else{
+        for (j in (i + 1):(n + 1)) {
+          if (c.opt[j] == T) {
+            break
+          }
+        }
+        r.i = sum(r[i:(j - 1)])
+      }
+      
+      P = append(c(i - 1,r.i), P)
+      
+      if (c.opt[i] == T) {
+        P = append(c(i - 1,0), P)
+      }
+    }
+    
+    x = c()
+    y = c()
+    for (i in 1:(length(P))) {
+      if (i %% 2 == 1) {
+        x = append(x, c(P[i]))
+      }
+      else {
+        y = append(y, c(P[i]))
+      }
+    }
+    
+    
+    p = data.frame(x,y)
+    ## pomozen del za simulacijo
+    d = c(F)
+    for (i in 2:length(p[,1])) {
+      if (p[i,1] - p[i - 1,1] == 0) {
+        d[i] = T
+      } else {
+        d[i] = F
+      }
+    }
+    ##
+    
+    return(list(p,p[d,]))
+  }
+  ### konec DP
+  ###
+  
+  
+  
+  if (allowshort == TRUE) {
+    SHT = sqrt((p + h) / p) #faktor za shortage cost, ce ne dopuscamo, potem nastavi na 1
+  } else{
+    SHT = 1
+  }
+  
+  if (skal != 0) {
+    n = skal
+  } #ce testiramo skalabilnost kode
+  
+  
+  #### Tu izracunamo optimalna yopt/RP glede na ostale parametre
+  ####
+  yopt = sqrt((2 * K * D) / h) * SHT #kolicina, ki jo narocimo
+  if (!is.na(yopt.force)) {
+    yopt = yopt.force
+  }
+  if (TCtest == "yopt") {
+    yopt = ind * yopt
+  }
+  
+  S = yopt / SHT ^ 2 #pozitiven del narocila
+  short = yopt - S #shortage v enotah
+  t0 = yopt / D            #dolzina cikla
+  Le = L %% t0 #effective lead time
+  EX = D * Le           # Upanje povprasevanja med Le
+  SD = sqrt(sd1 ^ 2 * Le) #std. odklon povprasevanja med Le
+  RP = Le * D - short + B #reorder point
+  
+  if (!is.na(RP.force)) {
+    RP = RP.force
+  }
+  if (TCtest == "RP") {
+    RP = ind * RP
+  }
+  ####
+  ####
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  #### Generiramo nakljucni vektor povprasevanj ter pomozne
+  #### data.frame za skoke (ko prejmemo narocila) -> I, ter tocke, kjer se menja povprasevanje -> A
   
   set.seed(seme)
   
@@ -132,19 +264,22 @@ for (ind in 1:length(H[,1])) {
   
   X = Y
   
-  if(DP){
-    #tocke = dynamic(n,K,h,r)
+  if (DP) { #Ce sledimo strategiji iz dinamicnega programiranja
+    if (is.na(r)) {
+      r = rep(D,n)
+    }
+    tocke = dynamic(n,K,h,r)
     Y = c(r,0)
     S = tocke[[2]][1,2]
-    }
-
-
-  A = data.frame()
+  }
+  
+  
+  A = data.frame() #data frame povprasevanja
   A[1:(n + 1),1] = 0:n
   A[1:(n + 1),2] = Y
   A[1:(n + 1),3] = 0
   A[1:(n + 1),4] = "demand"
-  A[1,3] = S
+  A[1,3] = S #zacetno narocilo
   
   
   #A[1,3] = S #zacetna kolicina
@@ -158,74 +293,17 @@ for (ind in 1:length(H[,1])) {
   #ce lead time predolg... prednarocila za prvih # obdobij z pricakovano vrednostjo?
   
   
-#   if (prepreci.propad) {
-#     ##ce smo v ciklu prejeli novo posiljko PREDEN smo uspeli preckati RP, na silo postavimo narocilo da preprecimo spiralo
-#     force.order = FALSE
-#   }
-#   
+  #   if (prepreci.propad) {
+  #     ##ce smo v ciklu prejeli novo posiljko PREDEN smo uspeli preckati RP, na silo postavimo narocilo da preprecimo spiralo
+  #     force.order = FALSE
+  #   }
+  #
   
   if (LE.namesto.L) {
     L = Le
   }
   
   
-  
-  #opomba: ce pades ful v minus lahk da vec ne preckas RP: TODO
-  
-  # i = 1
-  # i = 1
-  # while(A[i,1]<n){
-  #   ptm <- proc.time()
-  #   if(A[i,4]=="orderL"){       #ali smo v orderLOW?
-  #
-  #     if(prepreci.propad){
-  #       if(force.order==TRUE & A[i,1]+L<n){   #ce smo v ciklu prejeli novo posiljko PREDEN smo uspeli preckati RP, na silo postavimo narocilo da preprecimo spiralo pri volatilnih porazd.
-  #         time = A[i,1]+L
-  #         print(A[i,1])
-  #         A <- rbind(A,data.frame(V1 = time-eps1, V2 = 0,V3=0,V4 = "orderL"))
-  #         A <- rbind(A,data.frame(V1 = time, V2 = 0,V3=0,V4 = "orderU"))
-  #         A <- A[order(A$V1),]
-  #       }
-  #       else{force.order=TRUE}
-  #     }
-  #
-  #     A[i+1,3] = A[i,3] + yopt
-  #     i = i +1
-  #   }
-  #
-  #
-  #
-  #   dT = A[i+1,1]-A[i,1] # razlika v casih med tem in naslednjim
-  #
-  #
-  #
-  #
-  #   temp = A[i,3]-dT*A[i+1,2]
-  #   if(A[i,3] > RP & temp < RP){ #ali prekoracimo reorder point? TUKAJ A[i+1,3] je "to kar bi bila naslednja tocka brez reorderja"
-  #     time = (RP-A[i,3])*(A[i+1,1]-A[i,1])/(temp-A[i,3]) + A[i,1]+ L #dolocimo cas, ko smo prekoracili reorder point in s tem cas, ko bomo prejeli dobrino (=: time)
-  #     if(time <n){
-  #       if(prepreci.propad){force.order=FALSE}
-  #
-  #       A <- rbind(A,data.frame(V1 = time-eps1, V2 = 0,V3=0,V4 = "orderL")) #vstavimo tocki orderL in orderU ter ju umestimo v tabelo glede na cas
-  #       A <- rbind(A,data.frame(V1 = time, V2 = 0,V3=0,V4 = "orderU"))
-  #       A <- A[order(A$V1),] #pocasno, optimiraj sort? TODO
-  #
-  #
-  #     }
-  #
-  #     dT = A[i+1,1]-A[i,1]
-  #
-  #   }
-  #
-  #   if(A[i+1,4]=="orderL"){ #ce prejmemo posiljko naslednjic
-  #     A[i+1,3] = A[i,3]-dT*A[i+3,2] #izracun y vrednosti orderU
-  #   } else {A[i+1,3] = A[i,3]-dT*A[i+1,2]} #izracun y vrednosti naslednje tocke
-  #
-  #
-  #
-  #   i = i+1
-  #   #print(proc.time() - ptm)
-  # }
   st.obdobij = L %/% t0
   
   rezerva = 2 #koeficient rezerve: za koliko vecji bo vektor I kot pricakovano
@@ -233,13 +311,16 @@ for (ind in 1:length(H[,1])) {
   I = data.frame(rep(n + 1,leng),rep(0,leng),rep(yopt,leng)) #naredimo prealociran vektor dolzine > n, hitrejsa koda kot ce ga sproti povecujemo
   I[1,] = c(0,S,yopt) #zacetno narocilo
   
-  if (t0.namesto.RP) #ce narocujemo periodicno z t0 namesto ob preckanju RP
+  if (t0.namesto.RP)
+    #ce narocujemo periodicno z t0 namesto ob preckanju RP
   {
     RP = n * RP
     I[2:leng,1] = t0 * 1:(leng - 1)
   }
   
-  if (prednarocila & st.obdobij > 0) { #vstavimo prednarocila (narocila postavljena v negativnih casih)
+  if (prednarocila &
+      st.obdobij > 0) {
+    #vstavimo prednarocila (narocila postavljena v negativnih casih)
     
     
     for (i in 1:st.obdobij) {
@@ -248,10 +329,9 @@ for (ind in 1:length(H[,1])) {
   }
   
   
-
   
-  if(DP){
-    
+  
+  if (DP) {
     RP = Inf
     I[1:length(tocke[[2]][,1]),1] = tocke[[2]][,1]
     I[1:length(tocke[[2]][,2]),3] = tocke[[2]][,2]
@@ -366,11 +446,12 @@ for (ind in 1:length(H[,1])) {
     
     if (ci + 1 == cassupernarocilo) {
       ze.reseno = F
-      I[ci + 1,2] = yLOW + I[ci+1,3]
+      I[ci + 1,2] = yLOW + I[ci + 1,3]
     } else {
-      I[ci + 1,2] = yLOW + I[ci+1,3] #y koordinata zgornjega dela skoka
+      I[ci + 1,2] = yLOW + I[ci + 1,3] #y koordinata zgornjega dela skoka
     }
-    if ((prepreci.propad1|prepreci.propad2) & !is.na(I[ci + 1,2])) {
+    if ((prepreci.propad1 | prepreci.propad2) &
+        !is.na(I[ci + 1,2])) {
       #Ce pr.prop=T in med zadnjima skokoma ni bilo presecisca RP (x1) ALI:
       j = 1
       if (prepreci.propad1 & x1 < I[ci,1]) {
@@ -395,7 +476,7 @@ for (ind in 1:length(H[,1])) {
         I[ci + j1,1] = t
         cassupernarocilo = ci + j1
         propadi2 = append(propadi2,t)
-        I[ci+j1,3] = S+abs(I[ci + 1,2] - L*D + (j1-2)*yopt)
+        I[ci + j1,3] = S + abs(I[ci + 1,2] - L * D + (j1 - 2) * yopt)
         ze.reseno = T
         x1 = t
       }
@@ -427,6 +508,11 @@ for (ind in 1:length(H[,1])) {
   
   B2 = proc.time() - par
   
+  
+  ##### Izracun stroskov
+  #####
+  ## V naslednjem delu izracunamo ploscino pod grafom nad abciso (S.poz) ter pod njo (S.neg) za vsak cikel,
+  ## skupen strosek je (sestevek pozitivnih ploscin)*(holding cost)+(sestevek negativnih ploscin)*(shortage cost)+(setup cost)*(st. narocil)
   
   
   S.poz = c() #vektor pozitivnih ploscin na cikel
@@ -467,16 +553,24 @@ for (ind in 1:length(H[,1])) {
   
   
   
-  TC #skupni stroski
-  mean(percycle)
-  sd(percycle)
+  #TC #skupni stroski
+  #mean(percycle)
+  #sd(percycle)
+  ####
+  ####
   
   
+  stskokov = append(stskokov,length(I[,1]))
   B3 = proc.time() - par
   
   doba.prezivetja = max(A[A[,3] > 0,1])
   TCv = append(TCv,TC)
-}
+  
+  if (ind == 1) {
+    TCdef = TC
+  }
+  #TCv = append(TCv,sum(S.poz) * h)
+} 
 
 #### konec zanke skalabilnosti
 # V=append(V,B3[3])
@@ -498,7 +592,8 @@ summary(percycle)
 #plot(x=A[8:10,1],y=A[8:10,3],type = "b")
 
 plot(
-  x = A[,1],y = A[,3],type = "l",main = c("st ciklov pred dostavo",st.obdobij)
+  x = A[,1],y = A[,3],type = "l",main = c("st ciklov pred dostavo",st.obdobij),xlab =
+    "Obdobja",ylab = "Inventar"
 ) #zakomentiraj za velike n
 
 abline(h = RP, col = "blue") #modra crta je reorder point
@@ -512,14 +607,21 @@ points(
   
 ) #krizna narocila
 
-if (TCtest) {
-  plot(x = zaporedje,y = TCv)
-  points(x = ceiling(length(zaporedje) / 2))
+if (TCtest != F) {
+  skoki.normalizirano = (max(TCv / TCdef) - min(TCv / TCdef)) / (max(stskokov) -
+                                                                   min(stskokov)) * (stskokov - max(stskokov)) + max(TCv / TCdef)
+  plot(
+    x = zaporedje,y = TCv / TCdef,xlab = "Sprememba variirane spremenljivke",ylab =
+      "Sprememba celotnih stroskov"
+  )
+  lines(x = zaporedje,y = skoki.normalizirano,col = "Red",pch = ".")
+  axis(4,at = c(min(TCv / TCdef),max(TCv / TCdef)),labels = c(min(stskokov),max(stskokov)))
+  mtext("Stevilo skokov",side = 4)
 }
 
 
 
-#})
+#}) 
 
 
 

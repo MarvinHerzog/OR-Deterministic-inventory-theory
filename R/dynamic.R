@@ -100,12 +100,13 @@ dynamic <- function(n,K,h,r){
 # r = c(3,2,3,2)   # vektor povprasevanj
 
 #2.primer:
-n = 10 
+n = 45 
 K = 5  
 h = 0.02 
-D = 100     
+D = 150     
 sd = 10 
-r = runif(n,0,100)
+r = runif(n,0,D*2)
+r=rep(D,n)
 tocke = dynamic(n,K,h,r)
 plot(tocke[[1]], type="l", xlab = "obdobja", ylab ="inventar",
      main = "Optimalna strategija")
