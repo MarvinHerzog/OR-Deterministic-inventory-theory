@@ -4,13 +4,14 @@
 
 skal = 0
 
-###
+### test skalabilnosti kode, zgleda da raste linearno z n
+### odkomentiraj ta del, ter del na koncu kode
 # G = c(10,20,30,40,50,60,70,80,90,100,150,200,250,
 #      300,350,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2500,3000,3500,4000,4500,5000)
 # V=c()
 # for(skal in G){
-## #test skalabilnosti kode, zgleda da raste linearno z n
-
+###
+###
 
 #library(profvis)
 #profvis({
@@ -29,6 +30,9 @@ skal = 0
 
 #vkljuci celotni DP - KONEC
 #legende na grafih -KONEC SE MI ZDI
+
+#najdi zanimive zglede?
+#ko propademo, ko dva zaporedna skoka brez RP, textbook DP primerjaj z nasim
 ###
 
 #require(truncnorm) ##
@@ -45,49 +49,41 @@ skal = 0
 
 
 
-n = 50 #st obdobij
-
+n = 30 #st obdobij
 K = 50  #setup cost (per order)
 h = 0.05 #holding cost (per inventory-unit per unit-time)
 L = 2   #lead time (in unit-time)
 D = 150     # Pricakovana vrednost povprasevanja na enoto casa
-sd1 = 0 #Standardni odklon povprasevanja na enoto casa
+sd1 = 50 #Standardni odklon povprasevanja na enoto casa
 p = 0.10 #shortage cost (ce smo pod y=0)
 B = 0 #buffer, tj. varnostni dodatek k RP. Za zeljeno verjetnost, da pademo pod y=0, uporabi formulo B=VaR - Le *D (VaR value at risk za dano porazdelitev)
 RP.force = NA #sami izberemo reorder point (sicer nastavi na NA)
 yopt.force = NA #sami izberemo kolicino, ki jo narocimo (sicer nastavi na NA)
+r = NA #ce zelis vstaviti svoj vektor povprasevanj, sicer pusti na NA (po default vzame rep(D,n) )
+korak = 0.005 # inkrement v zanki za testiranje stroskov, ce je korak npr 0.005, potem nastavimo zeljeno spremenljivko na 100%, 99.5%, 100.5%, 99%, 101% itd.
+stkor = 250 #zgornjih tock je stkor mnogo
+#seme = runif(1,0,1000)
+seme = 55
 
-
-# n = 10
-# K = 5
-# h = 0.02
-# D = mean(r)
-# sd = 10
-
-seme = runif(1,0,1000)
-#seme = 18
-
-allowshort = F  #dopuscamo nacrtovano pomanjkanje dobrin
+allowshort = T  #dopuscamo nacrtovano pomanjkanje dobrin
 prepreci.propad1 = F #ce mine ves cikel, brez da preckamo RP, naroci na koncu cikla
 prepreci.propad2 = F #ce smo po skoku se vedno pod RP, naroci taksno narocilo, da bo ob upostevanju vseh prihodnih skokov vrednost zalog na S
 prednarocila = T #ce L>Le, prvih nekaj obdobij naroci ob fiksnih cas. intervalih (kot da je Y deterministicen)
-LE.namesto.L = F #uporabi efektivni lead time - lepsi rezultati ob nestabilnih Y
+LE.namesto.L = F #uporabi efektivni lead time - lepsi rezultati ob nestabilnih Y, ni pa realisticno
 t0.namesto.RP = F #naroci periodicno z t0 namesto po preckanju RP
-TCtest = F #total cost test, nastavi na F ce noces testirat, sicer izberi parameter ki ga hoces perturbirat. V if-u spodaj spremeni korak in st. korakov
-DP = T #Simulacija rezultata dobljenega z dinamicnim programiranjem, PAZI: izklopi propad2 ter allowshort!
-r = NA #ce zelis vstaviti svoj vektor povprasevanj, sicer pusti na NA (po default vzame rep(D,n) )
+TCtest = F #total cost test, nastavi na F ce noces testirat, sicer izberi parameter ki ga hoces perturbirat (npr "RP") . V if-u spodaj spremeni korak in st. korakov
+DP = F #Simulacija rezultata dobljenega z dinamicnim programiranjem, PAZI: izklopi propad2 ter allowshort!
 
 
 
-TCv = c()
+
+TCv = c() #Vektor celotnih stroskov (za TCtest=T)
 zaporedje = 1
-stskokov = c()
+stskokov = c() #Stevilo skokov (skoki so tocke, kjer prejmemo dobrino)
 if (TCtest != F) {
   sprem = get(TCtest)
   yopt = 1
   RP = 1
-  korak = 0.005
-  stkor = 250
   zaporedje = c(seq(1 - floor(stkor / 2) * korak, 1 - korak, korak),seq(1,1 +
                                                                           (ceiling(stkor / 2) - 1) * korak,korak))
   #zaporedje = seq(1,1+(ceiling(stkor/2)-1)*korak,korak)
@@ -96,7 +92,7 @@ if (TCtest != F) {
 
 for (ind in zaporedje) {
   if (TCtest != F) {
-    assign(TCtest,sprem * ind)
+    assign(TCtest,sprem * ind) 
   }
   
   
@@ -215,10 +211,10 @@ for (ind in zaporedje) {
   #### Tu izracunamo optimalna yopt/RP glede na ostale parametre
   ####
   yopt = sqrt((2 * K * D) / h) * SHT #kolicina, ki jo narocimo
-  if (!is.na(yopt.force)) {
+  if (!is.na(yopt.force)) { #ce ignoriramo formulo zgoraj
     yopt = yopt.force
   }
-  if (TCtest == "yopt") {
+  if (TCtest == "yopt") { 
     yopt = ind * yopt
   }
   
@@ -230,8 +226,8 @@ for (ind in zaporedje) {
   SD = sqrt(sd1 ^ 2 * Le) #std. odklon povprasevanja med Le
   RP = Le * D - short + B #reorder point
   
-  if (!is.na(RP.force)) {
-    RP = RP.force
+  if (!is.na(RP.force)) { 
+    RP = RP.force 
   }
   if (TCtest == "RP") {
     RP = ind * RP
@@ -274,36 +270,26 @@ for (ind in zaporedje) {
   }
   
   
-  A = data.frame() #data frame povprasevanja
+  A = data.frame() #data frame povprasevanja skozi obdobja
   A[1:(n + 1),1] = 0:n
   A[1:(n + 1),2] = Y
   A[1:(n + 1),3] = 0
   A[1:(n + 1),4] = "demand"
   A[1,3] = S #zacetno narocilo
-  
-  
-  #A[1,3] = S #zacetna kolicina
-  #A[1,4] = "orderU"
+
   
   
   
   eps1 = 0.00000001 #koliko casa porabimo da odpakramo paket? (razlika orderL orderU)
   
-  
-  #ce lead time predolg... prednarocila za prvih # obdobij z pricakovano vrednostjo?
-  
-  
-  #   if (prepreci.propad) {
-  #     ##ce smo v ciklu prejeli novo posiljko PREDEN smo uspeli preckati RP, na silo postavimo narocilo da preprecimo spiralo
-  #     force.order = FALSE
-  #   }
-  #
+
   
   if (LE.namesto.L) {
     L = Le
   }
   
   
+  #data frame I deluje kot prioritetna vrsta za vsa prihodnja narocila
   st.obdobij = L %/% t0
   
   rezerva = 2 #koeficient rezerve: za koliko vecji bo vektor I kot pricakovano
@@ -504,6 +490,7 @@ for (ind in zaporedje) {
   A = merge(I3,A,all = T)
   A[A[,4] == "demand",1] = A[A[,4] == "demand",1] + eps2
   A = A[is.na(A[,1]) == F,]
+  colnames(A)<-c("x","sprememba","y","tip")
   ###
   
   B2 = proc.time() - par
@@ -621,7 +608,7 @@ if (TCtest != F) {
 
 
 
-#}) 
+
 
 
 
