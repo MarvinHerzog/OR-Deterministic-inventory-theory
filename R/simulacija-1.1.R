@@ -1,5 +1,6 @@
 
 
+
 #####inv3
 
 skal = 0
@@ -47,6 +48,7 @@ skal = 0
 
 
 
+#V datoteki zgledi so poucni primeri za naslednje paramtere
 
 
 n = 30 #st obdobij
@@ -73,9 +75,7 @@ LE.namesto.L = F #uporabi efektivni lead time - lepsi rezultati ob nestabilnih Y
 t0.namesto.RP = F #naroci periodicno z t0 namesto po preckanju RP
 TCtest = F #total cost test, nastavi na F ce noces testirat, sicer izberi parameter ki ga hoces perturbirat (npr "RP") . V if-u spodaj spremeni korak in st. korakov
 DP = F #Simulacija rezultata dobljenega z dinamicnim programiranjem, PAZI: izklopi propad2 ter allowshort!
-
-
-
+pikice = T
 
 TCv = c() #Vektor celotnih stroskov (za TCtest=T)
 zaporedje = 1
@@ -92,7 +92,7 @@ if (TCtest != F) {
 
 for (ind in zaporedje) {
   if (TCtest != F) {
-    assign(TCtest,sprem * ind) 
+    assign(TCtest,sprem * ind)
   }
   
   
@@ -208,13 +208,18 @@ for (ind in zaporedje) {
   } #ce testiramo skalabilnost kode
   
   
+  if (!is.na(r[1])) {
+    D = mean(r)
+  }
+  
   #### Tu izracunamo optimalna yopt/RP glede na ostale parametre
   ####
   yopt = sqrt((2 * K * D) / h) * SHT #kolicina, ki jo narocimo
-  if (!is.na(yopt.force)) { #ce ignoriramo formulo zgoraj
+  if (!is.na(yopt.force)) {
+    #ce ignoriramo formulo zgoraj
     yopt = yopt.force
   }
-  if (TCtest == "yopt") { 
+  if (TCtest == "yopt") {
     yopt = ind * yopt
   }
   
@@ -226,8 +231,8 @@ for (ind in zaporedje) {
   SD = sqrt(sd1 ^ 2 * Le) #std. odklon povprasevanja med Le
   RP = Le * D - short + B #reorder point
   
-  if (!is.na(RP.force)) { 
-    RP = RP.force 
+  if (!is.na(RP.force)) {
+    RP = RP.force
   }
   if (TCtest == "RP") {
     RP = ind * RP
@@ -260,8 +265,9 @@ for (ind in zaporedje) {
   
   X = Y
   
-  if (DP) { #Ce sledimo strategiji iz dinamicnega programiranja
-    if (is.na(r)) {
+  if (DP) {
+    #Ce sledimo strategiji iz dinamicnega programiranja
+    if (is.na(r[1])) {
       r = rep(D,n)
     }
     tocke = dynamic(n,K,h,r)
@@ -276,13 +282,13 @@ for (ind in zaporedje) {
   A[1:(n + 1),3] = 0
   A[1:(n + 1),4] = "demand"
   A[1,3] = S #zacetno narocilo
-
+  
   
   
   
   eps1 = 0.00000001 #koliko casa porabimo da odpakramo paket? (razlika orderL orderU)
   
-
+  
   
   if (LE.namesto.L) {
     L = Le
@@ -463,7 +469,7 @@ for (ind in zaporedje) {
         cassupernarocilo = ci + j1
         propadi2 = append(propadi2,t)
         I[ci + j1,3] = S + abs(I[ci + 1,2] - L * D + (j1 - 2) * yopt)
-        ze.reseno = T
+        ze.reseno = T #dokler cakamo na supernarocilo ne postavljamo novih
         x1 = t
       }
     }
@@ -490,7 +496,7 @@ for (ind in zaporedje) {
   A = merge(I3,A,all = T)
   A[A[,4] == "demand",1] = A[A[,4] == "demand",1] + eps2
   A = A[is.na(A[,1]) == F,]
-  colnames(A)<-c("x","sprememba","y","tip")
+  colnames(A) <- c("x","sprememba","y","tip")
   ###
   
   B2 = proc.time() - par
@@ -547,17 +553,17 @@ for (ind in zaporedje) {
   ####
   
   
-  stskokov = append(stskokov,length(I[,1]))
+  stskokov = append(stskokov,length(I[,1])) #stevilo skokov v simulaciji
   B3 = proc.time() - par
   
-  doba.prezivetja = max(A[A[,3] > 0,1])
+  doba.prezivetja = max(A[A[,3] > 0,1]) #vsaj toliko obdobij smo preziveli brez propada
   TCv = append(TCv,TC)
   
   if (ind == 1) {
     TCdef = TC
   }
   #TCv = append(TCv,sum(S.poz) * h)
-} 
+}
 
 #### konec zanke skalabilnosti
 # V=append(V,B3[3])
@@ -587,12 +593,20 @@ abline(h = RP, col = "blue") #modra crta je reorder point
 abline(h = 0, col = "red")  #rdeca pa nicla
 points(
   x = propadi,y = rep(RP,length(propadi)),col = "green",pch = "x"
-  
 ) #krizna narocila
 points(
   x = propadi2,y = rep(RP,length(propadi2)),col = "red",pch = "x"
   
 ) #krizna narocila
+
+if (pikice) {
+  points(
+    x = A[,1],y = A[,3],col = "black",pch = 18
+  )
+}
+
+
+
 
 if (TCtest != F) {
   skoki.normalizirano = (max(TCv / TCdef) - min(TCv / TCdef)) / (max(stskokov) -
